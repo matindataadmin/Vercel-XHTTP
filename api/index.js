@@ -1,1 +1,93 @@
-const _0x3bf314=_0x292c;(function(_0x2f018a,_0x13dfb9){const _0x573e76=_0x292c,_0xea4180=_0x2f018a();while(!![]){try{const _0x521d92=-parseInt(_0x573e76(0x112))/0x1+parseInt(_0x573e76(0x115))/0x2+parseInt(_0x573e76(0x117))/0x3+parseInt(_0x573e76(0x118))/0x4+parseInt(_0x573e76(0x103))/0x5*(-parseInt(_0x573e76(0x120))/0x6)+parseInt(_0x573e76(0xff))/0x7+-parseInt(_0x573e76(0x10c))/0x8*(-parseInt(_0x573e76(0x110))/0x9);if(_0x521d92===_0x13dfb9)break;else _0xea4180['push'](_0xea4180['shift']());}catch(_0x59e883){_0xea4180['push'](_0xea4180['shift']());}}}(_0x2d4c,0x483f6));export const config={'runtime':_0x3bf314(0x10f)};function _0x292c(_0x123ed2,_0xac1401){_0x123ed2=_0x123ed2-0xff;const _0x2d4c0c=_0x2d4c();let _0x292c23=_0x2d4c0c[_0x123ed2];return _0x292c23;}function _0x2d4c(){const _0xde33f0=['x-forwarded-host','27030UMuuVX','x-forwarded-port','replace','proxy-authorization','slice','keep-alive','upgrade','forwarded','trailer','8OOUnbq','Misconfigured:\x20TARGET_DOMAIN\x20is\x20not\x20set','error','edge','1118466lxVRTb','proxy-authenticate','104878ekLtfv','HEAD','has','912152cxwVRE','url','30459RIhsqA','1496932lGYxpB','method','relay\x20error:','x-forwarded-proto','half','x-vercel-','set','GET','642RWAWyY','Bad\x20Gateway:\x20Tunnel\x20Failed','startsWith','101570gkUhOW','transfer-encoding','x-forwarded-for'];_0x2d4c=function(){return _0xde33f0;};return _0x2d4c();}const TARGET_BASE=(process.env.TARGET_DOMAIN||'')[_0x3bf314(0x105)](/\/$/,''),STRIP_HEADERS=new Set(['host','connection',_0x3bf314(0x108),_0x3bf314(0x111),_0x3bf314(0x106),'te',_0x3bf314(0x10b),_0x3bf314(0x100),_0x3bf314(0x109),_0x3bf314(0x10a),_0x3bf314(0x102),_0x3bf314(0x11b),_0x3bf314(0x104)]);export default async function handler(_0x2d454a){const _0x339bca=_0x3bf314;if(!TARGET_BASE)return new Response(_0x339bca(0x10d),{'status':0x1f4});try{const _0x12a2c1=_0x2d454a[_0x339bca(0x116)]['indexOf']('/',0x8),_0x535f11=_0x12a2c1===-0x1?TARGET_BASE+'/':TARGET_BASE+_0x2d454a[_0x339bca(0x116)][_0x339bca(0x107)](_0x12a2c1),_0x21eb22=new Headers();let _0x5642f5=null;for(const [_0x441761,_0x3b100a]of _0x2d454a['headers']){if(STRIP_HEADERS[_0x339bca(0x114)](_0x441761))continue;if(_0x441761[_0x339bca(0x122)](_0x339bca(0x11d)))continue;if(_0x441761==='x-real-ip'){_0x5642f5=_0x3b100a;continue;}if(_0x441761===_0x339bca(0x101)){if(!_0x5642f5)_0x5642f5=_0x3b100a;continue;}_0x21eb22[_0x339bca(0x11e)](_0x441761,_0x3b100a);}if(_0x5642f5)_0x21eb22[_0x339bca(0x11e)](_0x339bca(0x101),_0x5642f5);const _0x3945a8=_0x2d454a[_0x339bca(0x119)],_0x6d5b8=_0x3945a8!==_0x339bca(0x11f)&&_0x3945a8!==_0x339bca(0x113);return await fetch(_0x535f11,{'method':_0x3945a8,'headers':_0x21eb22,'body':_0x6d5b8?_0x2d454a['body']:undefined,'duplex':_0x339bca(0x11c),'redirect':'manual'});}catch(_0x2a570d){return console[_0x339bca(0x10e)](_0x339bca(0x11a),_0x2a570d),new Response(_0x339bca(0x121),{'status':0x1f6});}}
+export const runtime = "edge";
+
+const BACKEND_HOST = (process.env.BACKEND_DOMAIN || "").replace(/\/+$/, "");
+
+const DROP_HEADERS = new Set([
+  "host",
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "forwarded",
+  "x-forwarded-host",
+  "x-forwarded-proto",
+  "x-forwarded-port",
+  "x-vercel-proxy",
+  "x-vercel-deployment-url",
+]);
+
+export default async function gateway(request) {
+  if (!BACKEND_HOST) {
+    return new Response("Backend not configured", { status: 500 });
+  }
+
+  try {
+    const requestUrl = new URL(request.url);
+    const destination = BACKEND_HOST + requestUrl.pathname + requestUrl.search;
+
+    const outgoingHeaders = new Headers();
+    let sourceIp = null;
+
+    for (const [name, value] of request.headers) {
+      const lowerName = name.toLowerCase();
+      if (DROP_HEADERS.has(lowerName)) continue;
+      if (lowerName.startsWith("x-vercel-")) continue;
+      if (lowerName === "x-real-ip") {
+        sourceIp = value;
+        continue;
+      }
+      if (lowerName === "x-forwarded-for") {
+        if (!sourceIp) sourceIp = value;
+        continue;
+      }
+      outgoingHeaders.set(lowerName, value);
+    }
+
+    if (sourceIp) {
+      const existing = outgoingHeaders.get("x-forwarded-for");
+      const newValue = existing ? `${existing}, ${sourceIp}` : sourceIp;
+      outgoingHeaders.set("x-forwarded-for", newValue);
+    }
+
+    outgoingHeaders.set("x-proxy-agent", "vercel-edge-proxy/1.0");
+
+    const httpMethod = request.method;
+    const isBodyAllowed = !["GET", "HEAD"].includes(httpMethod);
+
+    const fetchParameters = {
+      method: httpMethod,
+      headers: outgoingHeaders,
+      redirect: "manual",
+    };
+
+    if (isBodyAllowed) {
+      fetchParameters.body = request.body;
+      fetchParameters.duplex = "half";
+    }
+
+    const backendResponse = await fetch(destination, fetchParameters);
+
+    const responseHeaders = new Headers();
+    for (const [key, value] of backendResponse.headers) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === "transfer-encoding") continue;
+      if (lowerKey === "via") continue;
+      responseHeaders.set(key, value);
+    }
+
+    responseHeaders.set("x-proxied-by", "vercel-edge");
+
+    return new Response(backendResponse.body, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    console.error("proxy error:", error);
+    return new Response("Gateway Error: Unable to reach origin", { status: 502 });
+  }
+}
